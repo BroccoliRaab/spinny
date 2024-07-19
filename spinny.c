@@ -58,14 +58,14 @@ int main()
 
         for (i = 0; i < 8; i++)
         {
-            multivector_t mv = point(
+            multivector_t mv = PGA3D_point(
                 c.v[i].x,
                 c.v[i].y,
                 c.v[i].z
             );
 
-            multivector_t rotor = PGA3D_rotor(0.01, PGA3D_wedge(e2(), e3()));
-            rotor = PGA3D_mul(rotor, PGA3D_rotor(0.01, PGA3D_wedge(e3(), e1())));
+            multivector_t rotor = PGA3D_rotor(0.01, PGA3D_wedge(PGA3D_e2(), PGA3D_e3()));
+            rotor = PGA3D_mul(rotor, PGA3D_rotor(0.01, PGA3D_wedge(PGA3D_e3(), PGA3D_e1())));
             mv = PGA3D_mul(rotor, PGA3D_mul( mv, PGA3D_reverse(rotor)));
 
             c.v[i].x = mv.mvec[13];
