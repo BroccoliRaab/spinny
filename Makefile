@@ -1,5 +1,5 @@
 CC?=cc
-CFLAGS= -O3 -Wall -Wpedantic -lm -mavx
+CFLAGS= -O0 -Wall -Wpedantic -lm -g
 NAME=spinny
 SRC=spinny.c
 SDL_FLAGS!=sdl2-config --cflags --libs 
