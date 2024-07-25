@@ -93,7 +93,6 @@ static inline const multivector_t PGA3D_dual (const multivector_t mv) {
 //***********************
 static inline const multivector_t PGA3D_conjugate (const multivector_t mv) {
     multivector_t r;
-    const float * a = &mv.mvec[0];
     float * res = &r.mvec[0];
     res[0]=mv.mvec[0];
     res[1]=-mv.mvec[1];
@@ -120,7 +119,6 @@ static inline const multivector_t PGA3D_conjugate (const multivector_t mv) {
 //***********************
 static inline const multivector_t PGA3D_involute (const multivector_t mv) {
     multivector_t r;
-    const float * a = &mv.mvec[0];
     float * res = &r.mvec[0];
     res[0]=mv.mvec[0];
     res[1]=-mv.mvec[1];
