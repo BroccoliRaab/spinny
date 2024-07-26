@@ -21,10 +21,18 @@ typedef struct cube{
 
 int
 render(
-        SDL_Window *w,
         SDL_Renderer *r, 
         cube * c,
-        vert * a
+        vert * a,
+        vert lookat
+);
+
+vert 
+viewport(
+        SDL_Renderer *r, 
+        vert lookat,
+        float scale,
+        vert wc
 );
 
 int main(void)
@@ -48,9 +56,9 @@ int main(void)
     c.v[6] = (vert) {0.5, -0.5, -0.5};
     c.v[7] = (vert) {-0.5, -0.5, -0.5};
     
-    a = (vert) {0, -0.5, 0};
+    a = (vert) {0, 0.5, 0};
 
-    t_scale_factor = 0.1;
+    t_scale_factor = 1.0/100.0;
 
     w = SDL_CreateWindow(
         "spinny",
@@ -70,12 +78,7 @@ int main(void)
     dt = 0;
     memset(&M, 0, sizeof(M));
     M.mvec[0] =1;
-    B = PGA3D_add(
-        PGA3D_wedge(PGA3D_e1(), PGA3D_e2()),
-        PGA3D_smul( 1.3,
-                PGA3D_wedge(PGA3D_e1(), PGA3D_e3())
-        )
-    );
+    memset(&B, 0, sizeof(B));
     spring = PGA3D_mul(
         //PGA3D_ssub(1, PGA3D_smul(0.5,PGA3D_wedge(PGA3D_e0(), PGA3D_e2()))),
         PGA3D_point(a.x, a.y, a.z),
@@ -90,8 +93,8 @@ int main(void)
         /* DEBUG: */
         /* 
         net_ftf = gravity_ftf(M, -9.81); 
-        */
 
+        */
         net_ftf = PGA3D_add(
             gravity_ftf(M, -9.81),
             PGA3D_add(
@@ -100,10 +103,6 @@ int main(void)
             )
         );
 
-        dM = PGA3D_mul(
-            PGA3D_smul(-0.5, M),
-            B
-        );
 
         dB = PGA3D_dual( 
             PGA3D_sub(
@@ -116,7 +115,20 @@ int main(void)
                 )
             )
         );
+        /*
+        dB = PGA3D_smul(
+            0.5,
+            PGA3D_sub(
+                PGA3D_mul(PGA3D_dual(B), B),
+                PGA3D_mul(B, PGA3D_dual(B))
+            )
+        );
+        */
 
+        dM = PGA3D_mul(
+            PGA3D_smul(-0.5, M),
+            B
+        );
         /* TODO: RK4 */
         /* Euler Integration */
         M = PGA3D_add(M, PGA3D_smul(t_scale_factor*dt/1000.0, dM));
@@ -142,7 +154,7 @@ int main(void)
             c.v[i].y = mv.mvec[12];
             c.v[i].z = mv.mvec[11];
         }
-        render(w, r, &c, &a); 
+        render(r, &c, &a, (vert){0,0,0}); 
         SDL_PollEvent(&e);
         SDL_Delay(2);
         dt = SDL_GetTicks() - t;
@@ -157,19 +169,20 @@ exit:
 }
 int
 render(
-        SDL_Window * w,
         SDL_Renderer *r, 
         cube * c,
-        vert * a
+        vert * a,
+        vert lookat
 )
 {        
     int ww, wh, i;
     SDL_Rect anchor_box;
-    SDL_GetWindowSize(w, &ww, &wh);
+    vert pt0, pt1;
+    SDL_GetRendererOutputSize(r, &ww, &wh);
 
     /* Set Anchor */
-    anchor_box.x = ww/2*(a->x+1)-4;
-    anchor_box.y = wh/2*(a->y+1)-4;
+    anchor_box.x = ww/2*(a->x) - 4;
+    anchor_box.y = wh/2*(a->y*-1) -4;
     anchor_box.w = 8;
     anchor_box.h = 8;
 
@@ -181,32 +194,39 @@ render(
     SDL_SetRenderDrawColor(r, 0, 0xFF, 0x80, 0xff);
 
     for (i =0; i < 4; i++){
+        pt0 = viewport(r, lookat, 1, c->v[i]);
+        pt1 = viewport(r, lookat, 1, c->v[(i+4)%4]);
         SDL_RenderDrawLine(r,
-            (c->v[i].x +1)* ww/2, (c->v[i].y +1)* wh/2,
-            (c->v[(i+1)%4].x +1)* ww/2, (c->v[(i+1)%4].y +1)* wh/2
+            pt1.x,pt0.x,
+            pt1.x,pt1.x
         );
     }
 
     for (i =0; i < 4; i++){
+        pt0 = viewport(r, lookat, 1, c->v[i+4]);
+        pt1 = viewport(r, lookat, 1, c->v[(i+4)%4+4]);
         SDL_RenderDrawLine(r,
-            (c->v[i+4].x +1)* ww/2, (c->v[i+4].y +1)* wh/2,
-            (c->v[(i+1)%4+4].x +1)* ww/2, (c->v[(i+1)%4+4].y +1)* wh/2
+            pt1.x,pt0.x,
+            pt1.x,pt1.x
         );
     }       
     
     SDL_SetRenderDrawColor(r, 0xFF, 0xDD, 0x30, 0xff);
     for (i =0; i < 4; i++){
+        pt0 = viewport(r, lookat, 1, c->v[i]);
+        pt1 = viewport(r, lookat, 1, c->v[i+4]);
         SDL_RenderDrawLine(r,
-            (c->v[i].x +1)* ww/2, (c->v[i].y +1)* wh/2,
-            (c->v[i+4].x +1)* ww/2, (c->v[i+4].y +1)* wh/2
+            pt1.x,pt0.x,
+            pt1.x,pt1.x
         );
     }       
 
     /* Draw spring */
     SDL_SetRenderDrawColor(r, 0xA0, 0x00, 0xFF, 0xff);
 
+    pt0 = viewport(r, lookat, 1, c->v[0]);
     SDL_RenderDrawLine(r,
-        (c->v[0].x +1)* ww/2, (c->v[0].y +1)* wh/2,
+        pt0.x, pt1.y,
         anchor_box.x + anchor_box.w/2,
         anchor_box.y + anchor_box.h/2
     );
@@ -236,8 +256,6 @@ multivector_t spring_ftf(multivector_t M, multivector_t spring, multivector_t ve
 
 multivector_t gravity_ftf(multivector_t M, float grav_acc)
 {
-    /* BUG: Grav Calc is wrong */
-    /* TODO: return just grav and get grav to work on its own */ 
     return PGA3D_dual(
         PGA3D_mul(
             PGA3D_reverse(M),
@@ -252,7 +270,6 @@ multivector_t gravity_ftf(multivector_t M, float grav_acc)
     );
 }
 
-/*-0.25*/
 multivector_t damping_ftf(multivector_t B, float damp_factor)
 {
     return PGA3D_dual(PGA3D_smul(damp_factor, B));
@@ -260,3 +277,32 @@ multivector_t damping_ftf(multivector_t B, float damp_factor)
 
 
 
+vert 
+viewport(
+        SDL_Renderer *r, 
+        vert lookat,
+        float scale,
+        vert wc
+){
+    multivector_t M, pt, l;
+    int ww, wh;
+    SDL_GetRendererOutputSize(r, &ww, &wh);
+
+    memset(&M, 0, sizeof(M));
+    memset(&pt, 0, sizeof(pt));
+    memset(&l, 0, sizeof(l));
+    l = PGA3D_vee(
+        PGA3D_point(ww/2, wh/2, 0),
+        PGA3D_point(lookat.x, lookat.y, lookat.z)
+    );
+    M = PGA3D_mul(PGA3D_reverse(l),l);
+    M = PGA3D_translator(sqrtf(M.mvec[0]), l);
+    pt =  PGA3D_mul(
+        M,
+        PGA3D_mul(
+            PGA3D_point(wc.x, wc.y, wc.z),
+            PGA3D_reverse(M)
+        )
+    );
+    return (vert){pt.mvec[13],pt.mvec[12],pt.mvec[11]};
+}
